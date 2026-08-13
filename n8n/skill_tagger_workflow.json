@@ -1,0 +1,110 @@
+{
+  "name": "ConsultBae - Skill Category Auto-Tagger",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-trigger-1",
+      "name": "Manual Trigger (swap for Schedule Trigger in prod)",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [-100, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://localhost:5000/api/people/untagged",
+        "options": {}
+      },
+      "id": "fetch-untagged-1",
+      "name": "Fetch untagged people",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [120, 300]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "",
+        "options": {}
+      },
+      "id": "split-out-1",
+      "name": "Split into one item per person",
+      "type": "n8n-nodes-base.itemLists",
+      "typeVersion": 3,
+      "position": [340, 300],
+      "notes": "Input is a JSON array from the HTTP node; this fans it out to one n8n item per person so the LLM node runs once per person."
+    },
+    {
+      "parameters": {
+        "resource": "chat",
+        "model": "gpt-4o-mini",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You classify a person's skill list into exactly ONE category: 'automation-heavy' (n8n, Zapier, Selenium, web scraping heavy), 'web dev' (React, JavaScript, FastAPI, REST APIs as app-building), 'data' (SQL, MongoDB, MySQL, Pandas heavy), or 'ai/ml' (LangChain heavy). Reply with ONLY the category string, nothing else."
+            },
+            {
+              "role": "user",
+              "content": "={{ $json.name }}'s skills: {{ $json.skills.join(', ') }}"
+            }
+          ]
+        },
+        "options": { "temperature": 0 }
+      },
+      "id": "llm-tag-1",
+      "name": "LLM: classify skill category",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1.3,
+      "position": [560, 300],
+      "credentials": {
+        "openAiApi": { "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID", "name": "OpenAI account" }
+      },
+      "notes": "Swap for the Anthropic node / any chat-model node if you're not using OpenAI - same prompt works."
+    },
+    {
+      "parameters": {
+        "jsCode": "// normalize the LLM's free-text reply down to a clean category string\nconst raw = ($json.message?.content || $json.text || '').toLowerCase().trim();\nconst allowed = ['automation-heavy', 'web dev', 'data', 'ai/ml'];\nconst matched = allowed.find(c => raw.includes(c)) || 'other';\nreturn { person_id: $('Split into one item per person').item.json.person_id, skill_category: matched };"
+      },
+      "id": "normalize-1",
+      "name": "Normalize LLM reply",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [780, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://localhost:5000/api/people/{{ $json.person_id }}/tag",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"skill_category\": $json.skill_category } }}",
+        "options": {}
+      },
+      "id": "write-back-1",
+      "name": "Write tag back to DB",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1000, 300]
+    }
+  ],
+  "connections": {
+    "Manual Trigger (swap for Schedule Trigger in prod)": {
+      "main": [[{ "node": "Fetch untagged people", "type": "main", "index": 0 }]]
+    },
+    "Fetch untagged people": {
+      "main": [[{ "node": "Split into one item per person", "type": "main", "index": 0 }]]
+    },
+    "Split into one item per person": {
+      "main": [[{ "node": "LLM: classify skill category", "type": "main", "index": 0 }]]
+    },
+    "LLM: classify skill category": {
+      "main": [[{ "node": "Normalize LLM reply", "type": "main", "index": 0 }]]
+    },
+    "Normalize LLM reply": {
+      "main": [[{ "node": "Write tag back to DB", "type": "main", "index": 0 }]]
+    }
+  },
+  "meta": {
+    "instructions": "Import this file in n8n (Workflows > Import from File). Update the OpenAI credential (or swap the LLM node for Anthropic/another provider). Point the two HTTP Request node URLs at wherever app.py is actually running (localhost:5000 for local demo, or your deployed URL). Run app.py first so the API endpoints exist, click 'Execute workflow', and it will tag every person in people who has skills but no skill_category yet."
+  }
+}
