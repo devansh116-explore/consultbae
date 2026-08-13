@@ -1,0 +1,46 @@
+[
+  {
+    "category": "in_source_duplicate",
+    "detail": "source1: 'Rohit Verma' (rohit.verma13@mailtest.example.org) and 'R. Verma' (rohit.verma13@mailtest.example.org) share phone 9000000294 \u2014 same person, kept the fuller/first name and recorded the second email as an alt contact."
+  },
+  {
+    "category": "in_source_duplicate",
+    "detail": "source1: 'Nikhil Chopra' (nikhil.chopra70@example.com) and 'Nikhil Chopra' (alt.nikhil.chopra70@example.com) share phone 9000000103 \u2014 same person, kept the fuller/first name and recorded the second email as an alt contact."
+  },
+  {
+    "category": "blank_row",
+    "detail": "source2 line 12: fully empty row, dropped"
+  },
+  {
+    "category": "malformed_row",
+    "detail": "source2 line 20: email_id field has no '@' ('react, javascript, mysql') \u2014 looks column-shifted, dropped."
+  },
+  {
+    "category": "duplicate_header",
+    "detail": "source3 line 16: embedded duplicate header row (file is two exports concatenated), skipped."
+  },
+  {
+    "category": "ambiguous_match",
+    "detail": "'Arjun Mehta' (Noida) in gig_workers shares a name+city with MORE THAN ONE distinct phone-identified person elsewhere in the data (e.g. two different 'Arjun Mehta' in Noida) \u2014 refused to guess which one this gig-worker record belongs to. Kept as a separate, unlinked person record. Needs manual review (would ask the person to confirm phone)."
+  },
+  {
+    "category": "fallback_match",
+    "detail": "'Arjun Mehta' matched by name+city only (no shared phone) \u2014 accepted, single candidate."
+  },
+  {
+    "category": "fallback_match",
+    "detail": "'MANISH BHATIA' matched by name+city only (no shared phone) \u2014 accepted, single candidate."
+  },
+  {
+    "category": "fallback_match",
+    "detail": "'DIVYA CHOPRA' matched by name+city only (no shared phone) \u2014 accepted, single candidate."
+  },
+  {
+    "category": "fallback_match",
+    "detail": "'Karan Chopra' matched by name+city only (no shared phone) \u2014 accepted, single candidate."
+  },
+  {
+    "category": "fallback_match",
+    "detail": "'Vikram Mehta' matched by name+city only (no shared phone) \u2014 accepted, single candidate."
+  }
+]
