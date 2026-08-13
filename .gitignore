@@ -1,0 +1,8 @@
+venv/
+__pycache__/
+*.pyc
+consultbae.db
+uploads/*.webm
+uploads/*.wav
+uploads/*.mp3
+!uploads/.gitkeep
