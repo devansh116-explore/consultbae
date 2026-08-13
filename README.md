@@ -65,9 +65,19 @@ phone number matches someone from Task 1 — links the submission to that person
 `http://localhost:5000/submissions` lists everything with a play button.
 
 To deploy publicly for the video (so it's not just `localhost`): easiest is
-`ngrok http 5000` while `app.py` is running, or push to Render/Railway (Flask app,
-`pip install -r requirements.txt`, start command `python app/app.py` — note it'll
-need `ffmpeg` available in the build image).
+`ngrok http 5000` while `app.py` is running — no other changes needed, use the
+`https://xxxx.ngrok-free.app` URL it gives you in your recording.
+
+For a longer-lived public URL (e.g. Render free tier):
+- `app.py` reads `PORT` from the environment and defaults `FLASK_DEBUG` off in
+  prod, so no code changes needed there.
+- The build image needs `ffmpeg` — Render's default Python image doesn't have
+  it, so either use a Docker-based service with an `apt-get install -y ffmpeg`
+  step, or add a `render-build.sh` that runs it before `pip install`.
+- `consultbae.db` is gitignored on purpose (it's a build artifact, not source).
+  Add `python3 db/merge_pipeline.py` as part of the build/start command so the
+  DB exists before `app.py` runs — e.g. start command:
+  `python3 db/merge_pipeline.py && python3 app/app.py`.
 
 ### 3. Run the n8n automation (Task 2)
 

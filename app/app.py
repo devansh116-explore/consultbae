@@ -154,8 +154,12 @@ def api_tag_person(person_id):
 
 
 if __name__ == "__main__":
+    import os
+
     if not DB_PATH.exists():
         raise SystemExit(
             "consultbae.db not found — run db/merge_pipeline.py first (Task 1)."
         )
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    port = int(os.environ.get("PORT", 5000))
+    debug = os.environ.get("FLASK_DEBUG", "1") == "1"  # set FLASK_DEBUG=0 in prod
+    app.run(debug=debug, host="0.0.0.0", port=port)
