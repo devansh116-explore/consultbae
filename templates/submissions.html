@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <h2 style="margin-top:0">All submissions ({{ rows|length }})</h2>
+  {% if not rows %}
+    <p class="muted">Nothing submitted yet.</p>
+  {% else %}
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th><th>Phone</th><th>Linked person</th><th>Audio</th>
+        <th>Duration</th><th>Sample rate</th><th>Bitrate</th><th>Loudness</th><th>Quality</th><th>Submitted</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td>{{ r.name }}</td>
+        <td>{{ r.phone }}</td>
+        <td>{% if r.person_id %}<span class="muted">#{{ r.person_id }}</span>{% else %}<span class="muted">unmatched</span>{% endif %}</td>
+        <td><audio controls src="{{ url_for('serve_upload', filename=r.filename) }}"></audio></td>
+        <td>{{ r.duration_sec if r.duration_sec is not none else '—' }}s</td>
+        <td>{{ r.sample_rate_hz if r.sample_rate_hz is not none else '—' }} Hz</td>
+        <td>{{ r.bitrate_kbps if r.bitrate_kbps is not none else '—' }} kbps</td>
+        <td>{{ r.loudness_dbfs if r.loudness_dbfs is not none else '—' }} dBFS</td>
+        <td>
+          {% set q = r.quality_estimate or '' %}
+          <span class="badge {{ 'good' if 'good' in q else ('fair' if 'fair' in q else ('poor' if 'poor' in q else 'unknown')) }}">
+            {{ q }}
+          </span>
+        </td>
+        <td class="muted">{{ r.submitted_at.split('T')[0] }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+{% endblock %}

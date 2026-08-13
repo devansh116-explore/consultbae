@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <h2 style="margin-top:0">Submit an audio recording</h2>
+  <p class="muted">Record straight from your browser mic, or upload an existing audio file.</p>
+
+  <form id="submitForm" action="{{ url_for('submit') }}" method="post" enctype="multipart/form-data">
+    <label for="name">Full name</label>
+    <input type="text" id="name" name="name" required placeholder="e.g. Tanvi Gupta">
+
+    <label for="phone">Phone number</label>
+    <input type="tel" id="phone" name="phone" required placeholder="e.g. 9000000254">
+
+    <label>Audio</label>
+    <div class="row">
+      <button type="button" id="recordBtn" class="secondary">
+        <span class="rec-dot" id="recDot"></span> Start recording
+      </button>
+      <span id="recTimer" class="muted"></span>
+    </div>
+    <audio id="preview" controls style="display:none; margin-top:10px; width:100%"></audio>
+
+    <label for="fileUpload" style="margin-top:18px">…or upload a file instead</label>
+    <input type="file" id="fileUpload" accept="audio/*">
+
+    <div style="margin-top:20px">
+      <button type="submit" id="submitBtn" disabled>Submit</button>
+    </div>
+    <p class="muted" id="hint">Record a clip or choose a file to enable submit.</p>
+  </form>
+</div>
+
+<script>
+let mediaRecorder, chunks = [], recordedBlob = null, startTime, timerInterval;
+const recordBtn = document.getElementById('recordBtn');
+const recDot = document.getElementById('recDot');
+const recTimer = document.getElementById('recTimer');
+const preview = document.getElementById('preview');
+const fileUpload = document.getElementById('fileUpload');
+const submitBtn = document.getElementById('submitBtn');
+const hint = document.getElementById('hint');
+const form = document.getElementById('submitForm');
+
+function enableSubmit(msg) {
+  submitBtn.disabled = false;
+  hint.textContent = msg;
+}
+
+recordBtn.addEventListener('click', async () => {
+  if (!mediaRecorder || mediaRecorder.state === 'inactive') {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      chunks = [];
+      mediaRecorder = new MediaRecorder(stream);
+      mediaRecorder.ondataavailable = e => chunks.push(e.data);
+      mediaRecorder.onstop = () => {
+        recordedBlob = new Blob(chunks, { type: 'audio/webm' });
+        preview.src = URL.createObjectURL(recordedBlob);
+        preview.style.display = 'block';
+        fileUpload.value = '';
+        enableSubmit('Recording ready — submit when you\'re happy with it.');
+        clearInterval(timerInterval);
+        recTimer.textContent = '';
+        stream.getTracks().forEach(t => t.stop());
+      };
+      mediaRecorder.start();
+      recordBtn.innerHTML = '<span class="rec-dot recording"></span> Stop recording';
+      startTime = Date.now();
+      timerInterval = setInterval(() => {
+        recTimer.textContent = ((Date.now() - startTime) / 1000).toFixed(1) + 's';
+      }, 100);
+    } catch (err) {
+      hint.textContent = 'Mic access denied or unavailable: ' + err.message;
+    }
+  } else {
+    mediaRecorder.stop();
+    recordBtn.innerHTML = '<span class="rec-dot" id="recDot"></span> Start recording';
+  }
+});
+
+fileUpload.addEventListener('change', () => {
+  if (fileUpload.files.length) {
+    recordedBlob = null;
+    preview.src = URL.createObjectURL(fileUpload.files[0]);
+    preview.style.display = 'block';
+    enableSubmit('File ready — submit when you\'re happy with it.');
+  }
+});
+
+form.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const fd = new FormData(form);
+  if (recordedBlob) {
+    fd.append('audio', recordedBlob, 'recording.webm');
+  } else if (fileUpload.files.length) {
+    fd.append('audio', fileUpload.files[0]);
+  } else {
+    hint.textContent = 'Record or choose a file first.';
+    return;
+  }
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Uploading…';
+  fetch(form.action, { method: 'POST', body: fd })
+    .then(res => { window.location.href = res.url; })
+    .catch(err => { hint.textContent = 'Upload failed: ' + err; submitBtn.disabled = false; submitBtn.textContent = 'Submit'; });
+});
+</script>
+{% endblock %}
