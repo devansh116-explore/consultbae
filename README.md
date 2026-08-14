@@ -4,6 +4,10 @@ Merges three messy people-datasets into one SQLite DB, tags people's skills with
 n8n + LLM automation, and runs a mini browser audio-collection app on top of the
 same DB.
 
+## 🚀 Live Demo
+
+**App is live at:** https://consultbae.onrender.com/
+
 ## Repo structure
 
 ```
