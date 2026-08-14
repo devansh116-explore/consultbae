@@ -1,42 +1,106 @@
 """
-WSGI entry point for Gunicorn - handles database initialization.
-This allows Gunicorn to boot even if the DB doesn't exist yet.
+WSGI entry point for Gunicorn - handles database initialization without blocking.
 """
 
 import sys
+import sqlite3
+import json
 from pathlib import Path
 
-# Ensure the app can be imported
 BASE_DIR = Path(__file__).parent
 sys.path.insert(0, str(BASE_DIR))
 
-# Initialize database if needed
 DB_PATH = BASE_DIR / "consultbae.db"
 UPLOADS_DIR = BASE_DIR / "uploads"
+DATA_DIR = BASE_DIR / "data"
 
-try:
-    UPLOADS_DIR.mkdir(exist_ok=True)
-    
-    # Only run merge_pipeline if DB doesn't exist
-    if not DB_PATH.exists():
-        print("[WSGI] Database not found, initializing from merge pipeline...")
+print("[WSGI] Initializing upload directory...")
+UPLOADS_DIR.mkdir(exist_ok=True)
+
+# Try to initialize database only if it doesn't exist
+if not DB_PATH.exists():
+    print("[WSGI] Database not found, attempting to initialize...")
+    try:
+        # Try the full merge pipeline
+        from db.merge_pipeline import main as run_merge_pipeline
+        print("[WSGI] Running merge pipeline (this may take 30-60 seconds)...")
+        run_merge_pipeline()
+        print("[WSGI] ✓ Database initialized successfully from merge pipeline")
+    except Exception as e:
+        print(f"[WSGI] ✗ Merge pipeline failed: {e}")
+        print("[WSGI] Creating empty database schema as fallback...")
         try:
-            from db.merge_pipeline import main as run_merge_pipeline
-            run_merge_pipeline()
-            print("[WSGI] Database initialized successfully")
-        except Exception as e:
-            print(f"[WSGI] Warning: Database initialization failed: {e}")
-            print("[WSGI] App will continue, but may have limited functionality")
-    else:
-        print(f"[WSGI] Database found at {DB_PATH}")
-        
+            # Create minimal database with empty schema so app can at least boot
+            create_empty_db()
+            print("[WSGI] ✓ Empty database created (merge pipeline can be run manually later)")
+        except Exception as fallback_error:
+            print(f"[WSGI] ✗ Failed to create empty database: {fallback_error}")
+            print("[WSGI] ⚠ App will start but may have errors")
+else:
+    print(f"[WSGI] ✓ Database found at {DB_PATH}")
+
+
+def create_empty_db():
+    """Create an empty database with the correct schema."""
+    conn = sqlite3.connect(str(DB_PATH))
+    cur = conn.cursor()
+    
+    # Create tables with the same schema as merge_pipeline.py
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS people (
+            person_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            canonical_name TEXT NOT NULL,
+            email TEXT,
+            primary_phone TEXT,
+            city TEXT,
+            experience_years REAL,
+            ctc_annual_inr INTEGER,
+            skills TEXT DEFAULT '[]',
+            skill_category TEXT
+        )
+    """)
+    
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS source_records (
+            source_record_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            person_id INTEGER NOT NULL,
+            source_name TEXT NOT NULL,
+            raw_json TEXT NOT NULL,
+            FOREIGN KEY (person_id) REFERENCES people(person_id)
+        )
+    """)
+    
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS audio_submissions (
+            submission_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            person_id INTEGER,
+            name TEXT NOT NULL,
+            phone TEXT NOT NULL,
+            filename TEXT NOT NULL,
+            duration_sec REAL,
+            sample_rate_hz INTEGER,
+            bitrate_kbps INTEGER,
+            loudness_dbfs REAL,
+            quality_estimate TEXT,
+            submitted_at TEXT NOT NULL,
+            FOREIGN KEY (person_id) REFERENCES people(person_id)
+        )
+    """)
+    
+    conn.commit()
+    conn.close()
+
+
+# Import Flask app
+try:
+    from app.app import app
+    print("[WSGI] ✓ Flask app imported successfully")
 except Exception as e:
-    print(f"[WSGI] Error during startup: {e}", file=sys.stderr)
+    print(f"[WSGI] ✗ Failed to import Flask app: {e}")
     import traceback
     traceback.print_exc()
-
-# Now import and expose the Flask app
-from app.app import app
+    raise
 
 if __name__ == "__main__":
     app.run()
+

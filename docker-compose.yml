@@ -9,6 +9,15 @@ services:
     volumes:
       - ./uploads:/app/uploads
       - ./consultbae.db:/app/consultbae.db
+      - ./data_issues_log.json:/app/data_issues_log.json
     environment:
       FLASK_ENV: production
+      FLASK_DEBUG: "0"
     restart: unless-stopped
+    # Give the app time to initialize the database on first boot (up to 3 minutes)
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 120s

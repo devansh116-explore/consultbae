@@ -32,17 +32,6 @@ app = Flask(__name__, template_folder=str(BASE_DIR / "templates"))
 app.secret_key = "dev-only-secret-change-me"  # fine for a local demo, NOT for prod
 
 
-@app.before_request
-def check_database():
-    """Check if database exists before handling requests."""
-    if not DB_PATH.exists():
-        return jsonify({
-            "error": "Application database not initialized",
-            "message": "The database is being initialized. Please refresh the page in a moment.",
-            "status": 503
-        }), 503
-
-
 def get_conn():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
