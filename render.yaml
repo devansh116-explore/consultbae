@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: consultbae
+    runtime: docker
+    plan: starter
+    
+    # Build configuration
+    build:
+      dockerfilePath: ./Dockerfile
+    
+    # Environment variables
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: FLASK_DEBUG
+        value: "0"
+    
+    # Health check
+    healthCheckPath: /
+    
+    # Port configuration
+    port: 5000
+    
+    # Auto-deploy on git push
+    autoDeploy: true

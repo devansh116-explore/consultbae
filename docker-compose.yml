@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  consultbae:
+    build: .
+    container_name: consultbae-app
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./uploads:/app/uploads
+      - ./consultbae.db:/app/consultbae.db
+    environment:
+      FLASK_ENV: production
+    restart: unless-stopped

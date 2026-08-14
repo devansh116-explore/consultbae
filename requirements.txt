@@ -2,3 +2,4 @@ flask==3.1.*
 soundfile==0.14.*
 numpy
 pydub==0.25.*
+gunicorn==22.*
