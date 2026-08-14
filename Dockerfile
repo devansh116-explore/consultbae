@@ -16,9 +16,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy entire application
 COPY . .
 
-# Initialize database by running merge pipeline
-RUN python3 db/merge_pipeline.py
-
 # Create uploads directory with proper permissions
 RUN mkdir -p uploads && chmod 755 uploads
 
@@ -30,5 +27,6 @@ ENV FLASK_APP=app/app.py
 ENV FLASK_ENV=production
 ENV FLASK_DEBUG=0
 
-# Run with Gunicorn (production WSGI server)
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "4", "--timeout", "120", "app.app:app"]
+# Run with Gunicorn using WSGI entry point
+# The wsgi.py file will initialize the database on first boot
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "4", "--timeout", "120", "--access-logfile", "-", "--error-logfile", "-", "wsgi:app"]

@@ -32,6 +32,17 @@ app = Flask(__name__, template_folder=str(BASE_DIR / "templates"))
 app.secret_key = "dev-only-secret-change-me"  # fine for a local demo, NOT for prod
 
 
+@app.before_request
+def check_database():
+    """Check if database exists before handling requests."""
+    if not DB_PATH.exists():
+        return jsonify({
+            "error": "Application database not initialized",
+            "message": "The database is being initialized. Please refresh the page in a moment.",
+            "status": 503
+        }), 503
+
+
 def get_conn():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
@@ -157,9 +168,10 @@ if __name__ == "__main__":
     import os
 
     if not DB_PATH.exists():
-        raise SystemExit(
-            "consultbae.db not found — run db/merge_pipeline.py first (Task 1)."
-        )
+        print(f"Error: consultbae.db not found at {DB_PATH}")
+        print("Run db/merge_pipeline.py first (Task 1).")
+        import sys
+        sys.exit(1)
     port = int(os.environ.get("PORT", 5000))
     debug = os.environ.get("FLASK_DEBUG", "1") == "1"  # set FLASK_DEBUG=0 in prod
     app.run(debug=debug, host="0.0.0.0", port=port)
