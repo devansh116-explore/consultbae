@@ -14,23 +14,42 @@ DB_PATH = BASE_DIR / "consultbae.db"
 UPLOADS_DIR = BASE_DIR / "uploads"
 DATA_DIR = BASE_DIR / "data"
 
-print("[WSGI] Initializing upload directory...")
-UPLOADS_DIR.mkdir(exist_ok=True)
+print("[WSGI] ===== APP STARTUP =====")
+print(f"[WSGI] BASE_DIR: {BASE_DIR}")
+print(f"[WSGI] DB_PATH: {DB_PATH}")
+print(f"[WSGI] DATA_DIR: {DATA_DIR}")
+
+print("[WSGI] Creating upload directory...")
+try:
+    UPLOADS_DIR.mkdir(exist_ok=True)
+    print(f"[WSGI] ✓ Upload directory ready at {UPLOADS_DIR}")
+except Exception as e:
+    print(f"[WSGI] ✗ Failed to create uploads dir: {e}")
 
 # Try to initialize database only if it doesn't exist
 if not DB_PATH.exists():
     print("[WSGI] Database not found, attempting to initialize...")
     try:
         # Try the full merge pipeline
+        print("[WSGI] Importing merge_pipeline...")
         from db.merge_pipeline import main as run_merge_pipeline
+        print("[WSGI] ✓ Merge pipeline imported")
         print("[WSGI] Running merge pipeline (this may take 30-60 seconds)...")
         run_merge_pipeline()
         print("[WSGI] ✓ Database initialized successfully from merge pipeline")
+    except ImportError as ie:
+        print(f"[WSGI] ✗ Import error in merge_pipeline: {ie}")
+        print("[WSGI] Creating empty database schema as fallback...")
+        try:
+            create_empty_db()
+            print("[WSGI] ✓ Empty database created (merge pipeline can be run manually later)")
+        except Exception as fallback_error:
+            print(f"[WSGI] ✗ Failed to create empty database: {fallback_error}")
+            print("[WSGI] ⚠ App will start but may have errors")
     except Exception as e:
         print(f"[WSGI] ✗ Merge pipeline failed: {e}")
         print("[WSGI] Creating empty database schema as fallback...")
         try:
-            # Create minimal database with empty schema so app can at least boot
             create_empty_db()
             print("[WSGI] ✓ Empty database created (merge pipeline can be run manually later)")
         except Exception as fallback_error:
@@ -92,15 +111,24 @@ def create_empty_db():
 
 
 # Import Flask app
+print("[WSGI] Importing Flask app...")
 try:
     from app.app import app
     print("[WSGI] ✓ Flask app imported successfully")
-except Exception as e:
-    print(f"[WSGI] ✗ Failed to import Flask app: {e}")
+except ImportError as ie:
+    print(f"[WSGI] ✗ FATAL: Failed to import Flask app (ImportError): {ie}")
     import traceback
     traceback.print_exc()
-    raise
+    raise SystemExit(f"Cannot import Flask app: {ie}")
+except Exception as e:
+    print(f"[WSGI] ✗ FATAL: Failed to import Flask app: {e}")
+    import traceback
+    traceback.print_exc()
+    raise SystemExit(f"Cannot import Flask app: {e}")
+
+print("[WSGI] ===== APP READY =====")
 
 if __name__ == "__main__":
     app.run()
+
 

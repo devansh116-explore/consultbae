@@ -21,7 +21,31 @@ from pathlib import Path
 
 from flask import Flask, request, render_template, redirect, url_for, send_from_directory, flash, jsonify
 
-from audio_analysis import analyze_audio
+# Import audio_analysis from the same directory
+import sys
+from pathlib import Path as PathlibPath
+current_dir = PathlibPath(__file__).parent
+sys.path.insert(0, str(current_dir))
+
+try:
+    from audio_analysis import analyze_audio
+    print("[APP] Audio analysis module loaded successfully", file=sys.stderr)
+except ImportError as ie:
+    print(f"[APP] Warning: Could not import audio_analysis: {ie}", file=sys.stderr)
+    def analyze_audio(path):
+        return {
+            "duration_sec": None, "sample_rate_hz": None,
+            "bitrate_kbps": None, "loudness_dbfs": None,
+            "quality_estimate": "analysis unavailable",
+        }
+except Exception as e:
+    print(f"[APP] Warning: Error loading audio_analysis: {e}", file=sys.stderr)
+    def analyze_audio(path):
+        return {
+            "duration_sec": None, "sample_rate_hz": None,
+            "bitrate_kbps": None, "loudness_dbfs": None,
+            "quality_estimate": "analysis unavailable",
+        }
 
 BASE_DIR = Path(__file__).parent.parent
 DB_PATH = BASE_DIR / "consultbae.db"

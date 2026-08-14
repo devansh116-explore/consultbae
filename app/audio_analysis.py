@@ -9,15 +9,25 @@ worth calling out in the stuck log.
 """
 
 import subprocess
+import sys
 import numpy as np
 import soundfile as sf
 from pathlib import Path
-from pydub import AudioSegment
-from pydub.utils import mediainfo
+
+# Check if pydub is available
+try:
+    from pydub import AudioSegment
+    from pydub.utils import mediainfo
+    PYDUB_AVAILABLE = True
+except ImportError:
+    print("[AUDIO_ANALYSIS] Warning: pydub not available, audio analysis will be limited", file=sys.stderr)
+    PYDUB_AVAILABLE = False
 
 
 def _to_wav(src_path: Path, wav_path: Path):
     """Transcode any input audio (webm/ogg/mp3/m4a/wav/...) to 16-bit PCM WAV."""
+    if not PYDUB_AVAILABLE:
+        raise RuntimeError("pydub/ffmpeg not available for audio transcoding")
     audio = AudioSegment.from_file(src_path)
     audio.export(wav_path, format="wav")
     return audio
@@ -27,6 +37,8 @@ def _estimate_bitrate_kbps(src_path: Path, duration_sec: float) -> float:
     """Prefer ffprobe's reported bitrate (accurate for compressed formats
     like webm/opus). Fall back to file_size*8 / duration if ffprobe can't
     tell us (e.g. some raw WAV files don't carry a bitrate tag)."""
+    if not PYDUB_AVAILABLE:
+        return None
     try:
         info = mediainfo(str(src_path))
         br = info.get("bit_rate")
@@ -75,6 +87,17 @@ def _quality_estimate(loudness_dbfs: float, duration_sec: float, sample_rate: in
 def analyze_audio(input_path: str) -> dict:
     """Main entry point. input_path: path to the raw uploaded file (any
     browser-recorded or user-uploaded audio format)."""
+    
+    # If pydub is not available, return placeholder data
+    if not PYDUB_AVAILABLE:
+        return {
+            "duration_sec": None,
+            "sample_rate_hz": None,
+            "bitrate_kbps": None,
+            "loudness_dbfs": None,
+            "quality_estimate": "analysis unavailable (pydub/ffmpeg not installed)",
+        }
+    
     src = Path(input_path)
     wav_path = src.with_suffix(".analysis.wav")
     try:
@@ -92,6 +115,15 @@ def analyze_audio(input_path: str) -> dict:
             "bitrate_kbps": bitrate_kbps,
             "loudness_dbfs": loudness,
             "quality_estimate": quality,
+        }
+    except Exception as e:
+        print(f"[AUDIO_ANALYSIS] Error analyzing audio: {e}", file=sys.stderr)
+        return {
+            "duration_sec": None,
+            "sample_rate_hz": None,
+            "bitrate_kbps": None,
+            "loudness_dbfs": None,
+            "quality_estimate": f"analysis failed: {str(e)[:50]}",
         }
     finally:
         if wav_path.exists():
